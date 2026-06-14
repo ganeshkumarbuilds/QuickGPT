@@ -96,14 +96,7 @@ MONGODB_URI=your_mongodb_connection_string
 
 JWT_SECRET=your_secret_key
 
-OPENAI_API_KEY=your_openai_api_key
 
-IMAGEKIT_PUBLIC_KEY=your_public_key
-
-IMAGEKIT_PRIVATE_KEY=your_private_key
-
-IMAGEKIT_URL_ENDPOINT=your_url_endpoint
-```
 
 ## Author
 

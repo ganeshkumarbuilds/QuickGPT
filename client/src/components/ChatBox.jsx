@@ -35,10 +35,13 @@ const ChatBox = () => {
       setMessages(prev => [...prev, {role: 'user', content: prompt, timestamp: Date.now(), isImage: false}])
 
       const {data} = await axios.post(`/api/message/${mode}`,
-        {chatId: chat._id, prompt, isPublished},
-        {headers: {Authorization: `Bearer ${token}`}})
+  {chatId: chat._id, prompt, isPublished},
+  {headers: {Authorization: `Bearer ${token}`}})
+
+console.log("API Response:", data)
 
       if(data.success){
+        console.log("Reply: ", data.reply);
         setMessages(prev => [...prev, data.reply])
         if(mode === 'image'){
           setUser(prev => ({...prev, credits: prev.credits - 2}))
