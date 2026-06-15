@@ -1,6 +1,7 @@
 import Chat from "../models/Chat.js";
 import User from "../models/User.js";
 import openai from "../configs/openai.js";
+import { generateImage } from "../configs/cloudflare.js";
 
 export const textMessageController = async (req, res) => {
     try {
@@ -65,7 +66,6 @@ export const textMessageController = async (req, res) => {
 
 export const imageMessageController = async (req, res) => {
     try {
-        console.log("POLLINATIONS IMAGE CONTROLLER");
         const userId = req.user._id;
         if (req.user.credits < 2) {
             return res.json({
@@ -92,7 +92,8 @@ export const imageMessageController = async (req, res) => {
             timestamp: Date.now(),
             isImage: false,
         });
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+        const imageUrl = await generateImage(prompt);
+        console.log("Generated image:", imageUrl)
         
         const reply = {
             role: "assistant",

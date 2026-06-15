@@ -41,7 +41,8 @@ const ChatBox = () => {
 console.log("API Response:", data)
 
       if(data.success){
-        console.log("Reply: ", data.reply);
+        console.log("Reply: ",
+          JSON.stringify(data.reply, null, 2));
         setMessages(prev => [...prev, data.reply])
         if(mode === 'image'){
           setUser(prev => ({...prev, credits: prev.credits - 2}))
