@@ -10,10 +10,10 @@ const Login = () => {
     const {axios, setToken} = useAppContext()
 
     const handleSubmit = async (e) => {
-      e.preventDefault();
-      const url = state === "login" ? '/api/user/login' : '/api/user/register'
+    e.preventDefault();
+    const url = state === "login" ? '/api/user/login' : '/api/user/register'
 
-      try {
+    try {
         const {data} = await axios.post(url, {name, email, password})
         if(data.success){
             setToken(data.token)

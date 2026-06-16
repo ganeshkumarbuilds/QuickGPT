@@ -33,7 +33,7 @@ export const stripeWebhooks = async (request, response) => {
                 else{
                     return response.json({received: true, message: "Ignored event: Invalid app"})
                 }
-                 break;
+                break;
             }
             default:
                 console.log("Unhandled event type", event.type)
