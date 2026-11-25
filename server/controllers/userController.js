@@ -12,7 +12,10 @@ const generateToken = (id) =>{
 
 
 export const registerUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
+    if (typeof name !== "string" || !name.trim() || typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) {
+        return res.status(400).json({success: false, message: "Name, email and password are required"})
+    }
 
     try {
         const userExists = await User.findOne({email})
@@ -28,9 +31,12 @@ export const registerUser = async (req, res) => {
 }
 
 export const loginUser = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
+    if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) {
+        return res.status(400).json({success: false, message: "Email and password are required"})
+    }
     try {
-        const user = await User.findOne({email})
+        const user = await User.findOne({email}).select("+password")
         if(user){
             const isMatch = await bcrypt.compare(password, user.password)
 
@@ -67,15 +73,16 @@ export const getPublishedImages = async (req, res) => {
                     "messages.isPublished": true
                 }
             },
+            { $sort: { "messages.timestamp": -1 } },
             {
                 $project: {
                     _id: 0,
                     imageUrl: "$messages.content",
-                    userName: "$userName"
+                    userName: "$username"
                 }
             }
         ])
-        res.json({success: true, images: publishImageMessages.reverse()})
+        res.json({success: true, images: publishImageMessages})
     } catch (error) {
         return res.json({ success: false, message: error.message });
     }

@@ -1,32 +1,16 @@
-import jwt from 'jsonwebtoken'
-import User from '../models/User.js';
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-export const protect = async (req, res, next) => {
-    console.log("AUTH HEADER:", req.headers.authorization);
-
-    let token;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
-        return res.status(401).json({ success: false, message: "Not authorized, no token" });
-    }
-
+export async function protect(req, res, next) {
+    const token = /^Bearer (\S+)$/i.exec(req.headers.authorization || "")?.[1];
+    let id;
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET)
-        const userId = decoded.id;
-
-        const user = await User.findById(userId)
-
-        if (!user) {
-            return res.json({ success: false, message: "Not authorized, user not found" });
-        }
-
-        req.user = user;
-        next()
-    } catch (error) {
-        res.status(401).json({ message: "Not authorized, token failed" })
+        id = jwt.verify(token, process.env.JWT_SECRET).id;
+    } catch {
+        return res.status(401).json({ success: false, message: "Please sign in again" });
     }
+    const user = await User.findById(id);
+    if (!user) return res.status(401).json({ success: false, message: "Account not found" });
+    req.user = user;
+    next();
 }

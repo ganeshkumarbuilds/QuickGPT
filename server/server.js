@@ -1,31 +1,12 @@
-import express from 'express'
 import 'dotenv/config'
-import cors from 'cors'
 import connectDB from './configs/db.js'
-import userRouter from './routes/userRoutes.js'
-import chatRouter from './routes/chatRoutes.js'
-import messageRouter from './routes/messagesRoutes.js'
-import creditRouter from './routes/creditsRoutes.js'
-import { stripeWebhooks } from './controllers/webhooks.js'
+import app from './app.js'
 
-
-const app = express()
-
-await connectDB()
-
-app.post('/app/stripe', express.raw({type: 'application/json'}), stripeWebhooks)
-
-app.use(cors())
-app.use(express.json())
-
-app.get('/', (req, res)=> res.send('Server is Live!'))
-app.use('/api/user', userRouter)
-app.use('/api/chats', chatRouter)
-app.use('/api/message', messageRouter)
-app.use('/api/credit', creditRouter)
-
-const PORT = process.env.PORT || 3000
-
-app.listen(PORT, ()=>{
-    console.log(`Server is Running on port ${PORT}`)
-})
+try {
+    app.locals.supportsTransactions = await connectDB()
+    const port = process.env.PORT || 3000
+    app.listen(port, () => console.log(`Server is running on port ${port}`))
+} catch (error) {
+    console.error('Database startup failed:', error.name)
+    process.exitCode = 1
+}

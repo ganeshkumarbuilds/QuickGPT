@@ -1,44 +1,19 @@
 import axios from "axios";
 
-export const generateImage = async (prompt) => {
-  try {
-
-    console.log("ACCOUNT ID:", process.env.CLOUDFLARE_ACCOUNT_ID);
-    console.log(
-      "TOKEN:",
-      process.env.CLOUDFLARE_API_TOKEN ? "Present" : "Missing"
-    );
-
-    const url =
-      `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/stabilityai/stable-diffusion-xl-base-1.0`;
-
-    console.log("URL:", url);
-
-    const response = await axios.post(
-      url,
-      {
-        prompt,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
+export async function generateImage(prompt) {
+    const { CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN } = process.env;
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+        throw new Error("Image generation is not configured");
+    }
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/stabilityai/stable-diffusion-xl-base-1.0`;
+    const response = await axios.post(url, { prompt }, {
+        headers: { Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}` },
         responseType: "arraybuffer",
-      }
-    );
-
-    const imageBuffer = Buffer.from(response.data);
-
-    return `data:image/png;base64,${imageBuffer.toString("base64")}`;
-
-  } catch (error) {
-
-    console.log("STATUS:", error.response?.status);
-    console.log("DATA:", error.response?.data?.toString());
-
-    throw error;
-  }
-};
-
-export default generateImage;
+        timeout: 120000,
+    });
+    const type = response.headers["content-type"]?.split(";")[0];
+    if (!["image/png", "image/jpeg", "image/webp"].includes(type) || !response.data.length) {
+        throw new Error("The provider returned an invalid image");
+    }
+    return `data:${type};base64,${Buffer.from(response.data).toString("base64")}`;
+}

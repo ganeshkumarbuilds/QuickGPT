@@ -1,14 +1,14 @@
 import React from 'react'
 import { assets } from '../assets/assets'
-import { useAppContext } from '../context/AppContext'
+import { useAppContext } from '../context/useAppContext'
 import toast from 'react-hot-toast'
 import moment from 'moment'
 
 const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
   const {
-    chats, setChats, selectedChat, setSelectedChat,
+    chats, setChats, setSelectedChat,
     theme, setTheme, user, navigate,
-    createNewChat, fetchUserChats, axios, token, logout
+    createNewChat, axios, logout
   } = useAppContext()
 
   const [search, setSearch] = React.useState('')
@@ -19,13 +19,9 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
       const confirm = window.confirm("Are you sure you want to delete this chat?")
       if(!confirm) return
 
-      const {data} = await axios.post('/api/chats/delete', {chatId}, {headers: {Authorization: `Bearer ${token}`}})
+      const {data} = await axios.post('/api/chats/delete', {chatId})
       if(data.success){
         setChats(prev => prev.filter(chat => chat._id !== chatId))
-        if(selectedChat?._id === chatId){
-          setSelectedChat(null)
-        }
-        await fetchUserChats()
         toast.success(data.message)
       } else {
         toast.error(data.message)
@@ -36,13 +32,21 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
   }
 
   return (
-    <div className={`flex flex-col h-screen min-w-72 p-5 dark:bg-gradient-to-b from-[#242124] to-[#000000] border-r border-[#80609F] backdrop-blur-3xl transition-all duration-500 ${!isMenuOpen && 'max-md:-translate-x-full'}`}>
+    <div className={`max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-20 bg-white dark:bg-black flex flex-col h-screen w-72 shrink-0 p-5 dark:bg-gradient-to-b from-[#242124] to-[#000000] border-r border-[#80609F] backdrop-blur-3xl transition-all duration-500 ${!isMenuOpen && 'max-md:-translate-x-full'}`}>
 
       {/* Logo */}
       <img src={theme === 'dark' ? assets.logo_full : assets.logo_full_dark} alt="" className='w-full max-w-48' />
 
       {/* New Chat Button */}
-      <button onClick={() => createNewChat()} className='flex justify-center items-center w-full py-2 mt-10 text-white bg-gradient-to-r from-[#A456F7] to-[#3D81F6] text-sm rounded-md cursor-pointer'>
+      <button onClick={async () => {
+        try {
+          await createNewChat()
+          navigate('/')
+          setIsMenuOpen(false)
+        } catch (error) {
+          toast.error(error.response?.data?.message || error.message)
+        }
+      }} className='flex justify-center items-center w-full py-2 mt-10 text-white bg-gradient-to-r from-[#A456F7] to-[#3D81F6] text-sm rounded-md cursor-pointer'>
         + New Chat
       </button>
 
@@ -65,7 +69,7 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
               </p>
               <p className='text-xs text-gray-500 dark:text-[#B1A6C0]'>{moment(chat.updatedAt).fromNow()}</p>
             </div>
-            <img onClick={(e) => deleteChat(e, chat._id)} src={assets.bin_icon} className='hidden group-hover:block w-4 cursor-pointer not-dark:invert' alt="" />
+            <img onClick={(e) => deleteChat(e, chat._id)} src={assets.bin_icon} className='md:hidden md:group-hover:block w-4 cursor-pointer not-dark:invert' alt="" />
           </div>
         ))}
       </div>
@@ -105,7 +109,7 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
         <div className='flex items-center gap-3 p-3 mt-4 border border-gray-300 dark:border-white/15 rounded-md cursor-pointer group'>
           <img src={assets.user_icon} className='w-7 rounded-full' alt="" />
           <p className='flex-1 text-sm truncate'>{user.name}</p>
-          <img onClick={logout} src={assets.logout_icon} className='h-5 cursor-pointer hidden not-dark:invert group-hover:block' alt="" />
+          <img onClick={logout} src={assets.logout_icon} className='h-5 cursor-pointer md:hidden not-dark:invert md:group-hover:block' alt="" />
         </div>
       ) : (
         <div onClick={() => navigate('/login')} className='flex items-center gap-3 p-3 mt-4 border border-gray-300 dark:border-white/15 rounded-md cursor-pointer'>

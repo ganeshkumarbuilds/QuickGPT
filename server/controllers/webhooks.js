@@ -2,47 +2,42 @@ import Stripe from "stripe";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 
-export const stripeWebhooks = async (request, response) => {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-    const sig = request.headers["stripe-signature"]
-
+export async function stripeWebhooks(req, res) {
+    const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = process.env;
+    if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET) return res.sendStatus(503);
+    const stripe = new Stripe(STRIPE_SECRET_KEY);
     let event;
     try {
-        event = stripe.webhooks.constructEvent(request.body, sig, process.env.STRIPE_WEBHOOK_SECRET)
-    } catch (error) {
-        return response.status(400).send(`Webhook Error: ${error.message}`)
+        event = stripe.webhooks.constructEvent(
+            req.body, req.headers["stripe-signature"], STRIPE_WEBHOOK_SECRET
+        );
+    } catch {
+        return res.status(400).send("Invalid webhook signature");
     }
-    try {
-        switch (event.type) {
-            case "payment_intern.succeeded":{
-                const paymentIntent = event.data.object;
-                const sessionList = await stripe.checkout.sessions.list({
-                    payment_intent: paymentIntent.id,
-                })
-                const session = sessionList.data[0];
-                const {transactionId, appId} = session.metadata;
-
-                if(appId === 'quickgpt'){
-                    const transaction = await Transaction.findOne({_id: transactionId, isPaid: false})
-
-                    await User.updateOne({_id: transactionId}, {$inc: {credits: transaction.credits }})
-
-                    transaction.isPaid = true;
-                    await transaction.save();
-                }
-                else{
-                    return response.json({received: true, message: "Ignored event: Invalid app"})
-                }
-                break;
-            }
-            default:
-                console.log("Unhandled event type", event.type)
-                break;
+    let session;
+    if (event.type === "payment_intent.succeeded") {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: event.data.object.id, limit: 1 });
+        session = sessions.data[0];
+    } else if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) {
+        session = event.data.object;
+    }
+    if (session?.metadata?.appId === "quickgpt" && session.payment_status === "paid") {
+        const transaction = await Transaction.findById(session.metadata.transactionId);
+        if (!transaction) return res.status(404).send("Unknown purchase");
+        if (session.currency !== "usd" || session.amount_total !== transaction.amount * 100) {
+            return res.status(400).send("Purchase amount mismatch");
         }
-        response.json({received: true})
-    } catch (error) {
-        console.log("Webhook processing error: ", error)
-        response.status(500).send("Internal Server Error")
+        if (!transaction.isPaid) {
+            // The receipt and increment share one atomic write, even on standalone MongoDB.
+            const result = await User.updateOne(
+                { _id: transaction.userId, creditedTransactions: { $ne: transaction._id } },
+                { $inc: { credits: transaction.credits }, $addToSet: { creditedTransactions: transaction._id } }
+            );
+            if (!result.matchedCount && !await User.exists({ _id: transaction.userId, creditedTransactions: transaction._id })) {
+                return res.status(500).send("Purchaser unavailable");
+            }
+            await Transaction.updateOne({ _id: transaction._id }, { $set: { isPaid: true } });
+        }
     }
-    
+    res.json({ received: true });
 }

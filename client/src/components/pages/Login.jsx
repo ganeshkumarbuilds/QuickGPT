@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useAppContext } from '../../context/AppContext';
+import { useState } from 'react'
+import { useAppContext } from '../../context/useAppContext';
 import toast from 'react-hot-toast';
 
 const Login = () => {
@@ -17,12 +17,11 @@ const Login = () => {
         const {data} = await axios.post(url, {name, email, password})
         if(data.success){
             setToken(data.token)
-            localStorage.setItem('token', data.token)
         }else{
             toast.error(data.message)
         }
       } catch (error) {
-        toast.error(error.message)
+        toast.error(error.response?.data?.message || error.message)
       }
       
     }
