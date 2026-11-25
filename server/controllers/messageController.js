@@ -9,6 +9,9 @@ async function sendMessage(req, res, isImage) {
     if (!mongoose.isObjectIdOrHexString(chatId) || typeof prompt !== "string" || !prompt.trim()) {
         return res.status(400).json({ success: false, message: "A chat and a prompt are required" });
     }
+    if (isImage && Array.from(prompt.trim()).length > 2048) {
+        return res.status(400).json({ success: false, message: "Image prompts can contain up to 2,048 characters." });
+    }
     const owner = { _id: chatId, userId: req.user._id };
     const chat = isImage ? await Chat.exists(owner) : await Chat.findOne(owner, { messages: { $slice: -32 } }).lean();
     if (!chat) return res.status(404).json({ success: false, message: "Chat not found" });
@@ -24,7 +27,15 @@ async function sendMessage(req, res, isImage) {
             const history = chat.messages.filter((item, index, items) => !item.isImage && !(item.role === "user" && items[index + 1]?.isImage)).map(({ role, content }) => ({ role, content }));
             content = await generateText([...history, { role: message.role, content: message.content }]);
         }
-    } catch {
+    } catch (error) {
+        const status = error.response?.status ?? error.status;
+        const provider = isImage ? "Cloudflare" : "Gemini";
+        console.error("Generation request failed", { provider, status, code: error.code });
+        if (status === 429) return res.status(429).json({ success: false, message: "Generation quota reached. Please try again later." });
+        if ([401, 403, 404, 410].includes(status) || error.message.endsWith("not configured")) {
+            return res.status(503).json({ success: false, message: provider + " generation needs administrator attention." });
+        }
+        if (status === 503) return res.status(503).json({ success: false, message: provider + " is temporarily unavailable. Please try again shortly." });
         return res.status(502).json({ success: false, message: "Generation failed. Please try again." });
     }
 

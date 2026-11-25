@@ -5,15 +5,15 @@ export async function generateImage(prompt) {
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
         throw new Error("Image generation is not configured");
     }
-    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/stabilityai/stable-diffusion-xl-base-1.0`;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
     const response = await axios.post(url, { prompt }, {
         headers: { Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}` },
-        responseType: "arraybuffer",
+        responseType: "json",
         timeout: 120000,
     });
-    const type = response.headers["content-type"]?.split(";")[0];
-    if (!["image/png", "image/jpeg", "image/webp"].includes(type) || !response.data.length) {
+    const image = response.data?.result?.image;
+    if (!response.data?.success || typeof image !== "string" || !image.length) {
         throw new Error("The provider returned an invalid image");
     }
-    return `data:${type};base64,${Buffer.from(response.data).toString("base64")}`;
+    return `data:image/jpeg;base64,${image}`;
 }

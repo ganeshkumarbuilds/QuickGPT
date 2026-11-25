@@ -7,7 +7,7 @@ export async function generateText(messages) {
         apiKey: process.env.GEMINI_API_KEY,
         baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
         timeout: 60000,
-        maxRetries: 1,
+        maxRetries: 0,
     });
     // Keep the current prompt intact and fit recent complete exchanges around it.
     let start = messages.length - 1;
@@ -20,10 +20,17 @@ export async function generateText(messages) {
         if (remaining < 0) break;
         start -= 2;
     }
-    const response = await client.chat.completions.create({
-        model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
-        messages: messages.slice(start),
-    });
+    const primary = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    const fallback = process.env.GEMINI_FALLBACK_MODEL || "gemini-flash-lite-latest";
+    const complete = model => client.chat.completions.create({ model, messages: messages.slice(start) });
+    let response;
+    try {
+        response = await complete(primary);
+    } catch (error) {
+        if (primary === fallback || ![404, 410, 503].includes(error.status)) throw error;
+        console.warn("Gemini switching to fallback model", { primary, fallback, status: error.status });
+        response = await complete(fallback);
+    }
     const content = response.choices[0]?.message?.content;
     if (!content?.trim()) throw new Error("The provider returned an empty response");
     return content;

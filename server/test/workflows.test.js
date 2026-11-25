@@ -73,7 +73,7 @@ test('QuickGPT HTTP workflows', async t => {
         assert.equal(await balance(), 18)
     })
     await t.test('publish only opted-in images and retain credit after provider failure', async () => {
-        t.mock.method(axios, 'post', async () => ({data: Buffer.from([1, 2]), headers: {'content-type': 'image/png'}}))
+        t.mock.method(axios, 'post', async () => ({data: {success: true, result: {image: '/9j/2Q=='}}}))
         await send('image', 'Private image')
         const published = await send('image', 'Public image', {isPublished: true})
         assert.equal(published.reply.isImage, true)
