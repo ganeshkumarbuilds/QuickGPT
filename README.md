@@ -8,7 +8,7 @@ QuickGPT is a full-stack AI chat application built using the MERN Stack. It allo
 - Backend: Node.js, Express.js
 - Database: MongoDB
 - Authentication: JWT
-- AI Integration: Gemini through its OpenAI-compatible API
+- AI Integration: OpenRouter text chat and Cloudflare Workers AI image generation
 - Other Tools: PrismJS, Cloudflare Workers AI, Stripe
 
 ## Features
@@ -66,7 +66,17 @@ PORT=3000
 CLIENT_URL=http://localhost:5173
 ```
 
-Text generation uses `GEMINI_API_KEY` and optionally `GEMINI_MODEL` (default `gemini-3.8-flash`). If the primary model is unavailable (404, 410, or 503), the server tries `GEMINI_FALLBACK_MODEL` once (default `gemini-flash-lite-latest`). Text generation uses the latest 32 messages and a 48,000-character history budget. Image generation uses Cloudflare Workers AI FLUX.1 schnell with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. For purchases, configure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Point Stripe at `/app/stripe` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Set `CLIENT_URL` to the frontend origin for checkout redirects.
+Set these server-side variables in Render (or in `server/.env` locally). Vercel only needs the frontend API URL.
+
+```env
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openrouter/free
+OPENROUTER_FALLBACK_MODEL=openrouter/free
+```
+
+Only the key is required. The default free router accepts chat messages and returns text. Free models are subject to provider availability and rate limits. For a specific model, set `OPENROUTER_MODEL` to an OpenRouter model ID supporting text input and text output. When the primary returns 404, 410, or 503, QuickGPT tries the fallback once if its ID differs. Account, quota, and network failures are reported to the client. See the [OpenRouter free router model card](https://openrouter.ai/openrouter/free).
+
+Text chat uses up to 32 recent stored messages and a 48,000-character history budget. Image generation uses Cloudflare Workers AI FLUX.1 schnell with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. For purchases, configure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Point Stripe at `/app/stripe` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Set `CLIENT_URL` to the frontend origin for checkout redirects.
 
 Run these commands in separate terminals from the repository root.
 

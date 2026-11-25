@@ -4,12 +4,14 @@ import axios from 'axios'
 import { generateText } from '../configs/openai.js'
 import { generateImage } from '../configs/cloudflare.js'
 
-test('Gemini falls back once on overload and preserves the conversation', async t => {
-    process.env.GEMINI_API_KEY = 'fixture'
-    process.env.GEMINI_MODEL = 'primary'
-    process.env.GEMINI_FALLBACK_MODEL = 'fallback'
+test('OpenRouter falls back once on overload and preserves the conversation', async t => {
+    process.env.OPENROUTER_API_KEY = 'fixture'
+    process.env.OPENROUTER_MODEL = 'primary'
+    process.env.OPENROUTER_FALLBACK_MODEL = 'fallback'
     const requests = []
-    t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    t.mock.method(globalThis, 'fetch', async (url, options) => {
+        assert.equal(String(url), 'https://openrouter.ai/api/v1/chat/completions')
+        assert.equal(new Headers(options.headers).get('authorization'), 'Bearer fixture')
         const request = JSON.parse(options.body)
         requests.push(request)
         if (request.model === 'primary') return new Response(null, {status: 503})

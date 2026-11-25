@@ -21,7 +21,8 @@ test('QuickGPT HTTP workflows', async t => {
     const topology = await mongoose.connection.db.admin().command({hello: 1})
     app.locals.supportsTransactions = Boolean(topology.setName || topology.msg === 'isdbgrid')
     Object.assign(process.env, {
-        JWT_SECRET: 'local-regression-test', GEMINI_API_KEY: 'test',
+        JWT_SECRET: 'local-regression-test', OPENROUTER_API_KEY: 'test',
+        OPENROUTER_MODEL: 'openrouter/free', OPENROUTER_FALLBACK_MODEL: 'openrouter/free',
         CLOUDFLARE_ACCOUNT_ID: 'test', CLOUDFLARE_API_TOKEN: 'test',
         STRIPE_SECRET_KEY: 'sk_test_local', STRIPE_WEBHOOK_SECRET: 'whsec_local',
         CLIENT_URL: 'http://localhost:5173',
@@ -71,6 +72,41 @@ test('QuickGPT HTTP workflows', async t => {
         assert.equal((await send('text', 'Follow-up')).success, true)
         assert.deepEqual(completions.at(-1).map(item => item.content), ['First', 'Test reply', 'Follow-up'])
         assert.equal(await balance(), 18)
+    })
+    await t.test('OpenRouter errors reach the chat UI without saving or billing a failed turn', async () => {
+        const fetchMock = globalThis.fetch.mock
+        const cases = [
+            [401, 503, /denied access/], [402, 503, /insufficient credits/],
+            [429, 429, /rate-limiting/], [404, 502, /configured model/],
+            [503, 503, /temporarily unavailable/], [504, 504, /timed out/],
+        ]
+        for (const [upstream, status, pattern] of cases) {
+            fetchMock.mockImplementationOnce(() => Response.json({error: {message: 'private upstream detail'}}, {status: upstream}))
+            const result = await send('text', 'Retry me')
+            assert.equal(result.status, status)
+            assert.match(result.message, pattern)
+            assert.doesNotMatch(result.message, /private upstream detail/)
+        }
+        for (const [response, pattern] of [
+            [{choices: []}, /invalid text reply/],
+            [{choices: [{message: {content: ['wrong type']}}]}, /invalid text reply/],
+            [{choices: [{error: {code: 429}, message: {content: 'partial'}}]}, /rate-limiting/],
+        ]) {
+            fetchMock.mockImplementationOnce(() => Response.json(response))
+            const result = await send('text', 'Invalid reply')
+            assert.equal(result.success, false)
+            assert.match(result.message, pattern)
+        }
+        fetchMock.mockImplementationOnce(() => { throw new TypeError('network unavailable') })
+        assert.match((await send('text', 'Offline')).message, /reach OpenRouter/)
+        delete process.env.OPENROUTER_API_KEY
+        try {
+            assert.match((await send('text', 'Missing key')).message, /not configured/)
+        } finally {
+            process.env.OPENROUTER_API_KEY = 'test'
+        }
+        assert.equal(await balance(), 18)
+        assert.equal((await api('/chats/get', {token})).chats[0].messages.length, 4)
     })
     await t.test('publish only opted-in images and retain credit after provider failure', async () => {
         t.mock.method(axios, 'post', async () => ({data: {success: true, result: {image: '/9j/2Q=='}}}))

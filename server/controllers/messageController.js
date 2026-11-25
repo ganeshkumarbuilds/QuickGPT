@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Chat from "../models/Chat.js";
 import User from "../models/User.js";
-import { generateText } from "../configs/openai.js";
+import { generateText, TextGenerationError } from "../configs/openai.js";
 import { generateImage } from "../configs/cloudflare.js";
 
 async function sendMessage(req, res, isImage) {
@@ -28,8 +28,12 @@ async function sendMessage(req, res, isImage) {
             content = await generateText([...history, { role: message.role, content: message.content }]);
         }
     } catch (error) {
+        if (error instanceof TextGenerationError) {
+            console.error("OpenRouter generation failed", { status: error.status, message: error.message });
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
         const status = error.response?.status ?? error.status;
-        const provider = isImage ? "Cloudflare" : "Gemini";
+        const provider = isImage ? "Cloudflare" : "OpenRouter";
         console.error("Generation request failed", { provider, status, code: error.code });
         if (status === 429) return res.status(429).json({ success: false, message: "Generation quota reached. Please try again later." });
         if ([401, 403, 404, 410].includes(status) || error.message.endsWith("not configured")) {
