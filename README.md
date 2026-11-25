@@ -66,7 +66,7 @@ PORT=3000
 CLIENT_URL=http://localhost:5173
 ```
 
-Text generation uses `GEMINI_API_KEY` and optionally `GEMINI_MODEL`. Image generation uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. For purchases, configure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Point Stripe at `/app/stripe` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Set `CLIENT_URL` to the frontend origin for checkout redirects.
+Text generation uses `GEMINI_API_KEY` and optionally `GEMINI_MODEL` (default `gemini-3.8-flash`). Text generation uses the latest 32 messages and a 48,000-character history budget. Image generation uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. For purchases, configure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Point Stripe at `/app/stripe` and subscribe to `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Set `CLIENT_URL` to the frontend origin for checkout redirects.
 
 Run these commands in separate terminals from the repository root.
 

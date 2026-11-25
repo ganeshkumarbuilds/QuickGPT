@@ -10,7 +10,7 @@ async function sendMessage(req, res, isImage) {
         return res.status(400).json({ success: false, message: "A chat and a prompt are required" });
     }
     const owner = { _id: chatId, userId: req.user._id };
-    const chat = await Chat.findOne(owner);
+    const chat = isImage ? await Chat.exists(owner) : await Chat.findOne(owner, { messages: { $slice: -32 } }).lean();
     if (!chat) return res.status(404).json({ success: false, message: "Chat not found" });
     const cost = isImage ? 2 : 1;
     const insufficient = { success: false, message: "You don't have enough credits to use this feature" };
@@ -21,7 +21,7 @@ async function sendMessage(req, res, isImage) {
         if (isImage) {
             content = await generateImage(message.content);
         } else {
-            const history = chat.messages.filter(item => !item.isImage).map(({ role, content }) => ({ role, content }));
+            const history = chat.messages.filter((item, index, items) => !item.isImage && !(item.role === "user" && items[index + 1]?.isImage)).map(({ role, content }) => ({ role, content }));
             content = await generateText([...history, { role: message.role, content: message.content }]);
         }
     } catch {

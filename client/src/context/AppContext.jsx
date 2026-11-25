@@ -42,9 +42,10 @@ function Session({ children, token, setToken }) {
         async function initialize() {
             try {
                 const options = { signal: controller.signal }
-                const { data: profile } = await api.get('/api/user/data', options)
+                const [{data: profile}, {data}] = await Promise.all([
+                    api.get('/api/user/data', options), api.get('/api/chats/get', options),
+                ])
                 if (!profile.success) throw new Error(profile.message)
-                const { data } = await api.get('/api/chats/get', options)
                 if (!data.success) throw new Error(data.message)
                 setUser(profile.user)
                 setChats(data.chats)

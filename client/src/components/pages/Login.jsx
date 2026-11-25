@@ -1,64 +1,70 @@
 import { useState } from 'react'
-import { useAppContext } from '../../context/useAppContext';
-import toast from 'react-hot-toast';
+import { Link, useLocation } from 'react-router-dom'
+import Brand from '../Brand'
+import { useAppContext } from '../../context/useAppContext'
 
-const Login = () => {
-  const [state, setState] = useState("login");
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const {axios, setToken} = useAppContext()
-
-    const handleSubmit = async (e) => {
-    e.preventDefault();
-    const url = state === "login" ? '/api/user/login' : '/api/user/register'
-
+export default function Login({ register = false }) {
+  const { axios, setToken } = useAppContext()
+  const location = useLocation()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(event) {
+    event.preventDefault()
+    if (busy) return
+    const values = Object.fromEntries(new FormData(event.currentTarget))
+    setBusy(true)
+    setError('')
     try {
-        const {data} = await axios.post(url, {name, email, password})
-        if(data.success){
-            setToken(data.token)
-        }else{
-            toast.error(data.message)
-        }
-      } catch (error) {
-        toast.error(error.response?.data?.message || error.message)
-      }
-      
+      const { data } = await axios.post(
+        register ? '/api/user/register' : '/api/user/login',
+        values,
+      )
+      if (!data.success) throw new Error(data.message)
+      setToken(data.token)
+    } catch (err) {
+      setError(err.response?.data?.message || err.message)
+      setBusy(false)
     }
+  }
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 m-auto items-start p-8 py-12 w-80 sm:w-[352px] text-gray-500 rounded-lg shadow-xl border border-gray-200 bg-white">
-            <p className="text-2xl font-medium m-auto">
-                <span className="text-indigo-500">User</span> {state === "login" ? "Login" : "Sign Up"}
-            </p>
-            {state === "register" && (
-                <div className="w-full">
-                    <p>Name</p>
-                    <input onChange={(e) => setName(e.target.value)} value={name} placeholder="type here" className="border border-gray-200 rounded w-full p-2 mt-1 outline-indigo-500" type="text" required />
-                </div>
-            )}
-            <div className="w-full ">
-                <p>Email</p>
-                <input onChange={(e) => setEmail(e.target.value)} value={email} placeholder="type here" className="border border-gray-200 rounded w-full p-2 mt-1 outline-indigo-500" type="email" required />
-            </div>
-            <div className="w-full ">
-                <p>Password</p>
-                <input onChange={(e) => setPassword(e.target.value)} value={password} placeholder="type here" className="border border-gray-200 rounded w-full p-2 mt-1 outline-indigo-500" type="password" required />
-            </div>
-            {state === "register" ? (
-                <p>
-                    Already have account? <span onClick={() => setState("login")} className="text-indigo-500 cursor-pointer">click here</span>
-                </p>
-            ) : (
-                <p>
-                    Create an account? <span onClick={() => setState("register")} className="text-indigo-500 cursor-pointer">click here</span>
-                </p>
-            )}
-            <button type='submit' className="bg-indigo-500 hover:bg-indigo-600 transition-all text-white w-full py-2 rounded-md cursor-pointer">
-                {state === "register" ? "Create Account" : "Login"}
-            </button>
-        </form>
-    
+    <main className="auth-page">
+      <Brand />
+      <form className="auth-card" onSubmit={submit}>
+        <p className="kicker">
+          <i /> Your workspace
+        </p>
+        <h1>{register ? 'Create an account' : 'Welcome back'}</h1>
+        {register && (
+          <label>
+            Name
+            <input name="name" autoComplete="name" required />
+          </label>
+        )}
+        <label>
+          Email address
+          <input type="email" name="email" autoComplete="email" required />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            autoComplete={register ? 'new-password' : 'current-password'}
+            required
+          />
+        </label>
+        {error && <p role="alert">{error}</p>}
+        <button className="button orange" disabled={busy}>
+          {busy ? 'Please wait…' : register ? 'Create account' : 'Log in'}{' '}
+          <span>→</span>
+        </button>
+        <p>
+          {register ? 'Already have an account?' : 'New to QuickGPT?'}{' '}
+          <Link state={location.state} to={register ? '/login' : '/signup'}>
+            {register ? 'Log in' : 'Sign up'}
+          </Link>
+        </p>
+      </form>
+    </main>
   )
 }
-
-export default Login

@@ -3,7 +3,7 @@ import { useAppContext } from '../../context/useAppContext'
 import Loading from './Loading'
 
 const Community = () => {
-  const {axios} = useAppContext()
+  const { axios } = useAppContext()
   const [images, setItems] = useState(null)
   const [error, setError] = useState('')
 
@@ -11,41 +11,55 @@ const Community = () => {
     const controller = new AbortController()
     async function load() {
       try {
-        const {data} = await axios.get('/api/user/published-images', {signal: controller.signal})
+        const { data } = await axios.get('/api/user/published-images', {
+          signal: controller.signal,
+        })
         if (!data.success) throw new Error(data.message)
         setItems(data.images)
       } catch (error) {
-        if (!controller.signal.aborted) setError(error.response?.data?.message || error.message)
+        if (!controller.signal.aborted)
+          setError(error.response?.data?.message || error.message)
       }
     }
     load()
     return () => controller.abort()
   }, [axios])
-  if (error) return <p className="p-6" role="alert">{error}</p>
+  if (error)
+    return (
+      <p className="p-6" role="alert">
+        {error}
+      </p>
+    )
   if (!images) return <Loading />
 
   return (
-    <div className='p-6 pt-12 xl:px-12 2xl:px-20 w-full mx-auto h-full overflow-y-scroll'>
-      <h2 className='text-xl font-semibold mb-6 text-gray-800 dark:text-purple-300'>Community Images</h2>
-
-      {images.length > 0 ? (
-        <div className='flex flex-wrap max-sm:justify-center gap-5'>
-          {images.map((item, index)=>(
-            <a key={index} href={item.imageUrl} download={item.imageUrl.startsWith("data:") ? "quickgpt-image" : undefined} target="_blank" rel="noreferrer" className='relative group block rounded-lg overflow-hidden border border-gray-200 dark:border-purple-700
-            shadow-sm hover:shadow-md transition-shadow duration-300'>
-              <img src={item.imageUrl} alt={`Image by ${item.userName}`} className='w-full h-40 md:h-50 2xl:h-62 object-cover group-hover:scale-105
-              transition-transform duration-300 ease-in-out' />
-              <p className='absolute bottom-0 right-0 text-xs bg-black/50 backdrop-blur text-white 
-              px-4 py-1 rounded-tl-xl opacity-0 group-hover:opacity-100 transition duration-300'>Created by {item.userName}</p>
+    <section className="screen">
+      <h1 className="screen-title">Community gallery</h1>
+      {images.length ? (
+        <div className="gallery-grid">
+          {images.map((item, index) => (
+            <a
+              key={index}
+              href={item.imageUrl}
+              download={
+                item.imageUrl.startsWith('data:') ? 'quickgpt-image' : undefined
+              }
+              target="_blank"
+              rel="noreferrer"
+            >
+              <img
+                loading="lazy"
+                src={item.imageUrl}
+                alt={`Image by ${item.userName}`}
+              />
+              <p>Created by {item.userName}</p>
             </a>
           ))}
-
         </div>
       ) : (
-        <p className='text-center text-gray-600 dark:text-purple-200 mt-10'>No Images Available</p>
+        <p className="muted">Published images will appear here.</p>
       )}
-
-    </div>
+    </section>
   )
 }
 

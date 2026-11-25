@@ -15,6 +15,8 @@ const ChatSchema = new mongoose.Schema({
     ]
 }, {timestamps: true})
 
+ChatSchema.index({ userId: 1, updatedAt: -1 })
+
 const Chat = mongoose.model('Chat', ChatSchema)
 
 export default Chat
